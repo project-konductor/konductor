@@ -4,6 +4,14 @@ description: An unofficial Helm chart for Netflix Conductor
 type: application
 version: 0.0.1
 appVersion: "3f81d3"
+home: https://github.com/project-konductor/konductor
+sources:
+  - https://github.com/project-konductor/konductor
+keywords:
+  - conductor
+  - konductor
+  - workflows
+  - netflix
 dependencies:
   - name: elasticsearch
     repository: https://helm.elastic.co
