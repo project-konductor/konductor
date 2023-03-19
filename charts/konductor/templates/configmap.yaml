@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "konductor.fullname" . }}
+  labels:
+    {{- include "konductor.labels" . | nindent 4 }}
+data:
+  config.properties: |
+    # Servers.
+    conductor.grpc-server.enabled=false
+
+    # Database persistence type.
+    conductor.db.type=postgres
+
+    spring.datasource.url=jdbc:postgresql://{{ .Values.postgresql.fullnameOverride }}:5432/{{ .Values.postgresql.auth.database }}
+    spring.datasource.username=conductor
+    spring.datasource.password=conductor
+
+
+    conductor.queue.type=redis_standalone
+    conductor.redis.hosts={{ .Values.redis.fullnameOverride }}-master:6379:us-east-1c
+
+
+    # Hikari pool sizes are -1 by default and prevent startup
+    spring.datasource.hikari.maximum-pool-size=10
+    spring.datasource.hikari.minimum-idle=2
+
+    # Elastic search instance indexing is enabled.
+    conductor.indexing.enabled=true
+
+    # Transport address to elasticsearch
+    conductor.elasticsearch.url=http://{{ .Values.elasticsearch.fullnameOverride }}:9200
+
+    # Name of the elasticsearch cluster
+    conductor.elasticsearch.indexName=conductor
+    #conductor.elasticsearch.version=7
+    conductor.elasticsearch.clusterHealthColor=yellow
+
+    # Load sample kitchen sink workflow
+    loadSample=true
+
+    # Extra properties from values.yaml
+    {{- if .Values.server.properties }}
+    {{- .Values.server.properties | nindent 4 }}
+    {{- end }}
+
+  nginx.conf: |
+    server {
+      listen 8080;
+      server_name conductor;
+      location / {
+        root /usr/share/nginx/html;
+        try_files $uri /index.html;
+      }
+
+      location /api {
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-NginX-Proxy true;
+        proxy_pass http://{{ include "konductor.fullname" . }}:{{ .Values.server.service.port }}/api;
+        proxy_ssl_session_reuse off;
+        proxy_set_header Host $http_host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_redirect off;
+      }
+    }
